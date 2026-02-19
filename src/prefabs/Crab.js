@@ -4,12 +4,12 @@ class Crab extends Phaser.Physics.Arcade.Sprite {
 
         scene.add.existing(this)
         scene.physics.add.existing(this)
-        this.setScale(3.5)
+        this.setScale(4)
         this.setCollideWorldBounds(true)
         this.body.setSize(this.width * 0.6, this.height * 0.8, true)
 
-        this.moveSpeed = 200
-        this.jumpVelocity = -700
+        this.moveSpeed = 500
+        this.jumpVelocity = -1000
         this.hurtDuration = 1000
 
         this.isInvincible = false

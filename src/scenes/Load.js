@@ -14,8 +14,8 @@ class Load extends Phaser.Scene {
         this.load.image('B6', 'B6.png')
 
         this.load.spritesheet('crab', 'CrabSpritesheet.png', {
-            frameWidth: 35,
-            frameHeight: 33,
+            frameWidth: 40,
+            frameHeight: 40,
         })
 
         this.load.spritesheet('lobster', 'LobsterSpritesheet.png', {
@@ -34,7 +34,7 @@ class Load extends Phaser.Scene {
         })
 
         this.load.spritesheet('koi', 'KoiSpritesheet.png', {
-            frameWidth: 201,
+            frameWidth: 182,
             frameHeight: 185,
         })
 
