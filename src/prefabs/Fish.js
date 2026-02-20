@@ -6,9 +6,11 @@ class Fish extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this)
 
         this.setScale(4)
-        this.setVelocityX(-100)
-        this.setImmovable(true)
-        this.body.allowGravity = false
+
+        if (this.body) {
+            this.body.setAllowGravity(false)
+            this.body.setImmovable(true)
+        }
 
         this.anims.play('Fwalk', true)
     }

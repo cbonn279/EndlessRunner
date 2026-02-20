@@ -1,7 +1,11 @@
 // Christian Bonardi
 // Endless Runner
 // 2/17/2026
-// Time Taken: 3 hours
+// Time Taken: 18 hours
+
+/* Sources:
+https://www.youtube.com/watch?v=SCO2BbbO17c&t=382s
+*/
 
 const config = {
     parent: 'phaser-game',

@@ -50,7 +50,7 @@ class Load extends Phaser.Scene {
         })
         this.anims.create({
             key: 'Cattack',
-            frameRate: 8,
+            frameRate: 12,
             repeat: 0,
             frames: this.anims.generateFrameNumbers('crab', { start: 4, end: 7 }),
         })
