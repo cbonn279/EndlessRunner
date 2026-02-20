@@ -11,7 +11,7 @@ class Crab extends Phaser.Physics.Arcade.Sprite {
 
         this.moveSpeed = 500
         this.jumpVelocity = -1050
-        this.hurtDuration = 1000
+        this.hurtDuration = 2000
 
         this.isInvincible = false
         this.health = 3 
@@ -20,19 +20,36 @@ class Crab extends Phaser.Physics.Arcade.Sprite {
             idle: new CrabIdleState(),
             walk: new CrabWalkState(),
             jump: new CrabJumpState(),
-            attack: new CrabAttackState(),
-            hurt: new CrabHurtState()
+            attack: new CrabAttackState()
         }, [scene, this])
     }
 
-    takeDamage() {
+    takeDamage(amount = 1) {
         if (this.isInvincible) return false
 
-        this.health = Math.max(0, this.health - 1)
+        this.health = Math.max(0, this.health - amount)
+
         this.isInvincible = true
+
+        const flashInterval = 120
+        let showTint = true
         this.setTint(0x888888)
 
+        const flashTimer = this.scene.time.addEvent({
+            delay: flashInterval,
+            loop: true,
+            callback: () => {
+                if (showTint) {
+                    this.clearTint()
+                } else {
+                    this.setTint(0x888888)
+                }
+                showTint = !showTint
+            }
+        })
+
         this.scene.time.delayedCall(this.hurtDuration, () => {
+            flashTimer.remove(false)
             this.clearTint()
             this.isInvincible = false
         })
@@ -84,8 +101,6 @@ class CrabWalkState extends State {
     execute(scene, crab) {
         const { left, right, up, space } = scene.keys
 
-        if(crab.isInvincible) return
-
         if(!crab.body.blocked.down) {
             this.stateMachine.transition('jump')
             return
@@ -116,12 +131,13 @@ class CrabJumpState extends State {
         crab.setVelocityY(crab.jumpVelocity)
         crab.anims.play('Cjump', true)
         scene.spawnHitbox(crab, 'circle', {
-            width: 150,
-            height: 150,
-            offsetX: -20,
-            offsetY: 0,
+            width: 160,
+            height: 160,
+            offsetX: -30,
+            offsetY: 30,
             duration: 1000,
-            follow: true
+            follow: true,
+            team: 'crustaceon'
         }) 
     }
 
@@ -147,12 +163,13 @@ class CrabAttackState extends State {
         crab.anims.play('Cattack')
 
         scene.spawnHitbox(crab, 'rect', {
-            width: 80,
-            height: 48,
+            width: 60,
+            height: 60,
             offsetX: 40,
-            offsetY: 0,
+            offsetY: 30,
             duration: 200,
-            follow: false
+            follow: false,
+            team: 'crustaceon'
         })
 
         crab.once('animationcomplete', () => {
@@ -161,28 +178,5 @@ class CrabAttackState extends State {
     }
 
     execute(scene, crab) {
-        if(crab.isInvincible) {
-            this.stateMachine.transition('hurt')
-        }
-    }
-}
-
-
-class CrabHurtState extends State {
-    enter(scene, crab) {
-        crab.isInvincible = true
-        crab.setTint(0x888888)
-
-        crab.setVelocityY(-300)
-
-        scene.time.delayedCall(crab.hurtDuration, () => {
-            crab.clearTint()
-            crab.isInvincible = false
-            this.stateMachine.transition('idle')
-        })
-    }
-
-    execute(scene, crab) {
-        crab.setVelocityX(0)
     }
 }

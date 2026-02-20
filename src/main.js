@@ -1,10 +1,15 @@
 // Christian Bonardi
 // Endless Runner
 // 2/17/2026
-// Time Taken: 18 hours
+// Time Taken: 25 hours
 
 /* Sources:
+https://docs.phaser.io/api-documentation/api-documentation
+https://github.com/nathanaltice/MovementStudies
+https://github.com/nathanaltice/FSM
 https://www.youtube.com/watch?v=SCO2BbbO17c&t=382s
+https://www.youtube.com/watch?v=LYMJ8U01Jco
+https://www.youtube.com/watch?v=7jPMOD9-SgY&t=2s
 */
 
 const config = {

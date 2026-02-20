@@ -18,6 +18,7 @@ class Play extends Phaser.Scene {
             return layer
         }
 
+        // parallax
         this.B1 = createLayer('B1', 0.01)
         this.B2 = createLayer('B2', 0.05)
         this.B3 = createLayer('B3', 0.08)
@@ -27,18 +28,45 @@ class Play extends Phaser.Scene {
 
         this.keys = this.input.keyboard.createCursorKeys()
 
+        // ground
         this.ground = this.physics.add.staticGroup()
-
         this.ground.create(this.scale.width / 2, this.scale.height - 30, null).setDisplaySize(this.scale.width, 20).refreshBody()
-
         this.ground.children.iterate(child => {
             child.setVisible(false)
         })
 
+        // add crab
         this.crab = new Crab(this, 200, this.scale.height - 100, 'crab', 0)
-
         this.physics.add.collider(this.crab, this.ground)
 
+        // health UI
+        this.CrustaceonHealth = 3
+        this.healthRects = []
+        const rectW = 30
+        const rectH = 12
+        const padding = 6
+        const startX = 10
+        const startY = 10
+
+        for (let i = 0; i < this.CrustaceonHealth; i++) {
+            const r = this.add.rectangle(startX + i * (rectW + padding), startY, rectW, rectH, 0xFF0000).setOrigin(0, 0)
+            this.healthRects.push(r)
+        }
+
+        this.updateHealthDisplay = function () {
+            const cur = (this.crab && typeof this.crab.health === 'number') ? this.crab.health : 0
+            for (let i = 0; i < this.healthRects.length; i++) {
+                if (i < cur) {
+                    this.healthRects[i].setFillStyle(0x00FF00)
+                } else {
+                    this.healthRects[i].setFillStyle(0x888888)
+                }
+            }
+        }.bind(this)
+
+        this.updateHealthDisplay()
+
+        // fish features
         this.fishSpeed = [
             -500,
             -400,
@@ -65,11 +93,12 @@ class Play extends Phaser.Scene {
             loop: true
         })
 
+        // hitbox interactions
         this.hitboxGroup = this.physics.add.group()
-
-        this.physics.add.overlap(this.hitboxGroup, this.fishGroup, this.onHitboxHitsEnemy, null, this)
-
-        this.physics.add.overlap(this.fishGroup, this.crab, this.onEnemyHitsPlayer, null, this)
+        this.physics.add.overlap(this.hitboxGroup, this.crab, this.damageCrustaceon, null, this)
+        this.physics.add.overlap(this.hitboxGroup, this.fishGroup, this.damageFish, null, this)
+        this.physics.add.overlap(this.crab, this.hitboxGroup, this.damageCrustaceon, null, this)
+        this.physics.add.overlap(this.fishGroup, this.hitboxGroup, this.damageFish, null, this)
 
         this.debugBoxes = false
         this.debugGraphics = this.add.graphics()
@@ -95,38 +124,74 @@ class Play extends Phaser.Scene {
         } else {
             fish.setVelocityX(fspeed)
         }
-
         fish.setTint(Phaser.Utils.Array.GetRandom(this.fishTints))
+
+         const hb = this.spawnHitbox(fish, 'rect', {
+            width: 100,
+            height: 80,
+            offsetX: 0,
+            offsetY: 0,
+            duration: 0,  
+            follow: true,
+            damage: 1,
+            team: 'enemy'
+        })
         return fish
     }
 
     spawnHitbox(owner, shape = 'rect', cfg = {}) {
         const hb = new Hitbox(this, owner, shape, {
-            width: cfg.width || 48,
-            height: cfg.height || 32,
-            offsetX: cfg.offsetX || 40,
-            offsetY: cfg.offsetY || 0,
-            duration: cfg.duration || 150,
-            follow: cfg.follow || false,
-            damage: cfg.damage || 1
+            width: cfg.width ?? 48,
+            height: cfg.height ?? 32,
+            offsetX: cfg.offsetX ?? 40,
+            offsetY: cfg.offsetY ?? 0,
+            duration: cfg.duration ?? 150,
+            follow: cfg.follow ?? false,
+            damage: cfg.damage ?? 1,
+            team: cfg.team ?? (owner && owner.texture && owner.texture.key === 'fish' ? 'enemy' : 'crustaceon')
         })
 
-        hb.offsetX = cfg.offsetX || 40
-        hb.offsetY = cfg.offsetY || 0
+        hb.offsetX = cfg.offsetX ?? 40
+        hb.offsetY = cfg.offsetY ?? 0
 
         this.hitboxGroup.add(hb)
         return hb
     }
 
-    onHitboxHitsEnemy(hitbox, fish) {
-        if (!fish || !fish.active) return
-        if (!hitbox || !hitbox.owner) return
+    damageFish(a, b) {
+        const normalize = (obj) => {
+            if (!obj) return obj
+            if (obj.gameObject) return obj.gameObject
+            return obj
+        }
 
+        const nA = normalize(a)
+        const nB = normalize(b)
+
+        let hitbox = null
+        let fish = null
+
+        if (nA instanceof Hitbox) hitbox = nA
+        if (nB instanceof Hitbox) hitbox = nB
+
+        if (nA instanceof Fish) fish = nA
+        if (nB instanceof Fish) fish = nB
+
+        if (!hitbox || !fish) return
+
+        if (hitbox.team !== 'crustaceon') return
+
+        // sanitize
+        if (!fish.active) return
+        if (!hitbox.owner) return
         if (hitbox.owner === fish) return
+        if (fish.dying) return
 
-        if (fish._dying) return
-        fish._dying = true
-
+        fish.dying = true
+        if (fish._followHitbox) {
+            fish._followHitbox.destroy()
+            fish._followHitbox = null
+        }
         fish.anims.play('Fdie')
 
         if (fish.body) {
@@ -138,44 +203,55 @@ class Play extends Phaser.Scene {
             targets: fish,
             y: fish.y - 40,
             scale: fish.scale * 0.5,
+            alpha: 0,
             ease: 'Cubic.easeOut',
-            duration: 800,
+            duration: 1500,
             onComplete: () => {
                 if (fish && fish.destroy) fish.destroy()
             }
         })
     }
 
-    onEnemyHitsPlayer(fish, maybePlayer) {
-        let player = maybePlayer
+    damageCrustaceon(a, b) {
+        let hitbox = null
+        let crustaceon = null
 
-        if (maybePlayer && maybePlayer.gameObject) {
-            player = maybePlayer.gameObject
+        const normalize = (obj) => {
+            if (!obj) return obj
+            if (obj.gameObject) return obj.gameObject
+            return obj
         }
 
-        if (!player || typeof player.takeDamage !== 'function') {
-            console.warn('onEnemyHitsPlayer: player has no takeDamage()', player)
+        const nA = normalize(a)
+        const nB = normalize(b)
+
+        if (nA instanceof Hitbox) hitbox = nA
+        if (nB instanceof Hitbox) hitbox = nB
+
+        if (nA instanceof Crab) crustaceon = nA
+        if (nB instanceof Crab) crustaceon = nB
+
+        if (!hitbox || !crustaceon) {
             return
         }
 
-        if (!player.active || !fish || !fish.active) return
+        if (hitbox.body && !hitbox.body.enable) return
+        if (crustaceon.body && !crustaceon.body.enable) return
 
-        if (player.isInvincible) return
+        if (hitbox.team !== 'enemy') return
 
-        const damaged = player.takeDamage()
+        if (crustaceon.isInvincible) return
+
+        const damaged = crustaceon.takeDamage(hitbox.damage || 1)
         if (damaged) {
-            if (fish && fish.destroy) {
-                this.tweens.add({
-                    targets: fish,
-                    y: fish.y - 20,
-                    alpha: 0,
-                    duration: 200,
-                    onComplete: () => fish.destroy()
-                })
+
+            this.updateHealthDisplay()
+
+            if (crustaceon.health <= 0) {
+                this.scene.start('gameoverScene')
             }
         }
     }
-
 
 
     update() {
