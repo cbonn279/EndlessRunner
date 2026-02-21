@@ -123,10 +123,16 @@ class Load extends Phaser.Scene {
 
         // koi animations
         this.anims.create({
+            key: 'Kblub',
+            frameRate: 1,
+            repeat: -1,
+            frames: this.anims.generateFrameNumbers('koi', { start: 0, end: 0 }),
+        })
+        this.anims.create({
             key: 'Kbite',
             frameRate: 2,
             repeat: 0,
-            frames: this.anims.generateFrameNumbers('koi', { start: 0, end: 1 }),
+            frames: this.anims.generateFrameNumbers('koi', { start: 1, end: 1 }),
         })
         
         this.scene.start('menuScene')

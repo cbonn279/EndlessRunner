@@ -297,7 +297,7 @@ class ShrimpDownState extends State {
         shrimp.body.setSize(shrimp.downBody.width, shrimp.downBody.height)
         shrimp.body.setOffset(shrimp.downBody.offsetX, shrimp.downBody.offsetY)
 
-        shrimp.createPuffer(scene, { shape: 'circle', width: 200, height: 200, offsetX: -45, offsetY: 20})
+        shrimp.createPuffer(scene, { shape: 'circle', width: 170, height: 170, offsetX: 30, offsetY: 40})
     }
 
     execute(scene, shrimp) {

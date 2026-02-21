@@ -1,7 +1,7 @@
 // Christian Bonardi
-// Endless Runner
+// Guppy Gobblers Endless Runner
 // last updated: 2/19/2026
-// Time Taken: 25 hours
+// Time Taken: 31 hours
 
 /* Sources:
 https://docs.phaser.io/api-documentation/api-documentation

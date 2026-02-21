@@ -136,6 +136,34 @@ class Play extends Phaser.Scene {
             loop: true
         })
 
+        // koi callibrations
+        this.koi = new Koi(this, this.scale.width * 0.5, this.worldTopY - 220)
+        this.koi.setVisible(true)
+
+        this.koiTargetY = this.worldTopY + 160
+        this.koiBiteRange = 80
+        this.koiLowerDuration = 1600
+        this.koiRetreatDuration = 900
+        this.koiLungeDuration = 300
+        this.koiAutoLungeProximity = 500
+
+        this.koiBiteConfig = {
+            width: 140,
+            height: 90,
+            offsetX: 0,
+            offsetY: 10
+        }
+
+        this.koiDiveTimes = [3000, 5000, 8000, 12000]
+        this.koiBusy = false
+        this.koiTimer = null
+        this.scheduleNextKoiDive = () => {
+            if (this.koiTimer) this.koiTimer.remove(false)
+            const delay = Phaser.Utils.Array.GetRandom(this.koiDiveTimes)
+            this.koiTimer = this.time.delayedCall(delay, () => this.startKoiLower(), [], this)
+        }
+        this.scheduleNextKoiDive()
+
         // hitbox interactions
         this.hitboxGroup = this.physics.add.group()
         this.physics.add.overlap(this.hitboxGroup, this.crustaceon, this.damageCrustaceon, null, this)
@@ -224,7 +252,6 @@ class Play extends Phaser.Scene {
 
         if (hitbox.team !== 'crustaceon') return
 
-        // sanitize
         if (!fish.active) return
         if (!hitbox.owner) return
         if (hitbox.owner === fish) return
@@ -311,13 +338,205 @@ class Play extends Phaser.Scene {
         }
     }
 
+    // koi functions
+    startKoiLower() {
+        if (!this.koi || this.koiBusy) return
+
+        this.koiBusy = true
+        this.koiBitThisCycle = false
+
+        this.koiLockedX = Phaser.Math.Clamp(this.crustaceon.x, 50, this.scale.width - 50)
+
+        this.koi.anims.play('Kblub', true)
+
+        this.tweens.add({
+            targets: this.koi,
+            x: this.koiLockedX,
+            duration: 200,
+            ease: 'Sine.easeInOut',
+            onComplete: () => {
+                this.tweens.add({
+                    targets: this.koi,
+                    y: this.koiTargetY,
+                    duration: this.koiLowerDuration,
+                    ease: 'Sine.easeInOut',
+                    onComplete: () => this.koiDecideBite()
+                })
+            }
+        })
+    }
+
+    startImmediateKoiBite() {
+        if (!this.koi || this.koiBusy) return
+
+        this.koiBusy = true
+        this.koi.x = Phaser.Math.Clamp(this.crustaceon.x, 50, this.scale.width - 50)
+        this.koiLungeAndBite()
+    }
+
+    koiDecideBite() {
+        if (!this.koi || !this.crustaceon) {
+            this.koiRetreat()
+            return
+        }
+
+        const dx = Math.abs(this.koiLockedX - this.crustaceon.x)
+
+        if (dx <= this.koiBiteRange) {
+            this.koiLungeAndBite()
+        } else {
+            this.koiRetreat()
+        }
+    }
+
+    koiLungeAndBite() {
+        if (!this.koi || !this.crustaceon) {
+            this.koiRetreat()
+            return
+        }
+
+        this.koiBitThisCycle = true
+
+        try { this.koi.anims.play('Kblub', true) } catch (e) {}
+
+        const cfg = this.koiBiteConfig || { width: 140, height: 90, offsetX: 0, offsetY: 10 }
+        const biteW = cfg.width
+        const biteH = cfg.height
+        const extraOffsetY = cfg.offsetY || 0
+        const offsetX = cfg.offsetX || 0
+
+        this._koiBiteZone = this.add.zone(
+            this.koi.x + offsetX,
+            this.koi.y + (this.koi.displayHeight / 2) + extraOffsetY,
+            biteW,
+            biteH
+        )
+
+        this.physics.add.existing(this._koiBiteZone)
+
+        if (this._koiBiteZone.body) {
+            this._koiBiteZone.body.setAllowGravity(false)
+            this._koiBiteZone.body.setImmovable(true)
+        }
+
+        let biteConnected = false
+
+        this._koiBiteCollider = this.physics.add.overlap(
+            this._koiBiteZone,
+            this.crustaceon,
+            () => {
+                if (biteConnected) return
+                biteConnected = true
+
+                this.crustaceon.health = Math.max(
+                    0,
+                    (this.crustaceon.health || 0) - 3
+                )
+                this.updateHealthDisplay()
+            },
+            null,
+            this
+        )
+
+        const targetY = (this.crustaceon.y || (this.worldTopY + 200)) - 350
+
+        this.tweens.add({
+            targets: this.koi,
+            y: targetY,
+            ease: 'Expo.easeIn',
+            duration: this.koiLungeDuration,
+
+            onUpdate: () => {
+                if (this._koiBiteZone && this._koiBiteZone.body && this.koi) {
+                    this._koiBiteZone.x = this.koi.x + offsetX
+                    this._koiBiteZone.y =
+                        this.koi.y +
+                        (this.koi.displayHeight / 2) +
+                        extraOffsetY
+
+                    this._koiBiteZone.body.position.x =
+                        this._koiBiteZone.x -
+                        this._koiBiteZone.body.width / 2
+
+                    this._koiBiteZone.body.position.y =
+                        this._koiBiteZone.y -
+                        this._koiBiteZone.body.height / 2
+                }
+            },
+
+            onComplete: () => {
+                try { this.koi.anims.play('Kbite', true) } catch (e) {}
+
+                try {
+                    if (this._koiBiteCollider) {
+                        this.physics.world.removeCollider(this._koiBiteCollider)
+                        this._koiBiteCollider = null
+                    }
+                } catch (e) {}
+
+                try {
+                    if (this._koiBiteZone && this._koiBiteZone.destroy) {
+                        this._koiBiteZone.destroy()
+                        this._koiBiteZone = null
+                    }
+                } catch (e) {}
+
+                this.time.delayedCall(180, () => {
+                    if (biteConnected) {
+                        if (this.crustaceon && this.crustaceon.health <= 0) {
+                            let newHigh = false
+                            if (this.score > this.highScore) {
+                                this.highScore = this.score
+                                localStorage.setItem('HighScore', this.highScore)
+                                newHigh = true
+                            }
+                            this.scene.start('gameoverScene', {
+                                score: this.score,
+                                highScore: this.highScore,
+                                newHigh: newHigh
+                            })
+                            return
+                        }
+                    }
+
+                    this.koiRetreat()
+                })
+            }
+        })
+    }
+
+    koiRetreat() {
+        if (!this.koi) {
+            this.koiBusy = false
+            this.scheduleNextKoiDive()
+            return
+        }
+
+        const retreatY = this.worldTopY - 220
+
+        try { this.koi.anims.play('Kbite', true) } catch (e) {}
+
+        this.tweens.add({
+            targets: this.koi,
+            y: retreatY,
+            ease: 'Sine.easeInOut',
+            duration: this.koiRetreatDuration,
+            onComplete: () => {
+                this.koiBusy = false
+                this.koiLockedX = null
+
+                try { this.koi.anims.play('Kblub', true) } catch (e) {}
+
+                this.scheduleNextKoiDive()
+            }
+        })
+    }
 
     update() {
         if (this.crustaceon) {
             this.crustaceon.stateMachine.step()
         }
 
-        // camera follow crustaceon
         if (this.crustaceon) {
             const cam = this.cameras.main
             const camH = cam.height
@@ -331,6 +550,18 @@ class Play extends Phaser.Scene {
             const lerp = 0.12
             cam.scrollY = Phaser.Math.Interpolation.Linear([cam.scrollY, clamped], lerp)
             cam.scrollX = 0
+        }
+
+        if (this.koi && this.crustaceon && !this.koiBusy) {
+            this.koi.x = Phaser.Math.Linear(
+                this.koi.x,
+                this.crustaceon.x,
+                0.08
+            )
+            const dy = Math.abs(this.koi.y - this.crustaceon.y)
+            if (typeof this.koiAutoLungeProximity === 'number' && dy <= this.koiAutoLungeProximity) {
+                this.startImmediateKoiBite()
+            }
         }
 
         this.B1.tilePositionX += this.B1.scrollSpeed
