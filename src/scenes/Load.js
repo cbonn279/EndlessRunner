@@ -38,6 +38,17 @@ class Load extends Phaser.Scene {
             frameHeight: 185,
         })
 
+        this.load.audio('slash', 'slash.wav')
+        this.load.audio('stab', 'stab.wav')
+        this.load.audio('bounce', 'bounce.wav')
+
+        this.load.audio('hurt', 'hurt.wav')
+        this.load.audio('bite', 'bite.wav')
+        this.load.audio('gameover', 'gameover.wav')
+        this.load.audio('choose', 'choose.wav')
+
+        this.load.audio('music', 'music.mp3')
+
     }
 
     create() {

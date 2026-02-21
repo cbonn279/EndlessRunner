@@ -4,7 +4,11 @@ class GameOver extends Phaser.Scene {
     }
 
     create(data) {
-        this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.6).setOrigin(0)
+        try {
+            this.sound.stopAll()
+            this.sound.play('gameover', { volume: 0.12 })
+        } catch (e) {}
+        this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x348c77, 0.6).setOrigin(0)
 
         this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 60, 'GAME OVER', {
             fontSize: '48px',

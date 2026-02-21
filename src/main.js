@@ -1,7 +1,7 @@
 // Christian Bonardi
 // Guppy Gobblers Endless Runner
-// last updated: 2/19/2026
-// Time Taken: 31 hours
+// last updated: 2/20/2026
+// Time Taken: 39 hours
 
 /* Sources:
 https://docs.phaser.io/api-documentation/api-documentation
@@ -17,7 +17,7 @@ const config = {
     type: Phaser.WEBGL,
     width: 1024,
     height: 600,
-    backgroundColor: '#000000',   
+    backgroundColor: '#348c77',   
     pixelArt: true,
     physics: {
         default: "arcade",

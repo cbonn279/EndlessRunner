@@ -109,6 +109,40 @@ class Play extends Phaser.Scene {
 
         this.updateScoreDisplay()
 
+        // directions
+        let controlsString = ''
+
+        switch (this.selectedCrustaceon) {
+            case 1: 
+                controlsString =
+                    'SPACEBAR : Slash     LEFT/RIGHT ARROWS : Move     UP ARROW : Jump'
+                break
+
+            case 2: 
+                controlsString =
+                    'HOLD SPACEBAR : Thrust     LEFT/RIGHT ARROWS : Move     HOLD UP ARROW : Float'
+                break
+
+            case 3: 
+                controlsString =
+                    'UP ARROW : Jump     LEFT/RIGHT ARROWS : Move     SPACEBAR ON FISH : Pogo'
+                break
+        }
+
+        this.controlsText = this.add.text(
+            this.scale.width / 2,
+            this.scale.height - 15,  
+            controlsString,
+            {
+                fontSize: '16px',
+                color: '#ffffff',
+                align: 'center'
+            }
+        )
+        .setOrigin(0.5, 1)
+        .setScrollFactor(0)
+        .setDepth(1000)
+
         // fish features
         this.fishSpeed = [
             -500,
@@ -163,6 +197,13 @@ class Play extends Phaser.Scene {
             this.koiTimer = this.time.delayedCall(delay, () => this.startKoiLower(), [], this)
         }
         this.scheduleNextKoiDive()
+
+        // music
+        this.bgMusic = this.sound.play('music', {
+            loop: true,
+            volume: 0.12
+        })
+        
 
         // hitbox interactions
         this.hitboxGroup = this.physics.add.group()
@@ -258,6 +299,15 @@ class Play extends Phaser.Scene {
         if (fish.dying) return
 
         fish.dying = true
+
+        try {
+            let sfxKey = 'slash' 
+            if (this.selectedCrustaceon === 2) sfxKey = 'stab'
+            else if (this.selectedCrustaceon === 3) sfxKey = 'bounce'
+
+            this.sound.play(sfxKey, { volume: 0.12 })
+        } catch (e) { console.warn('fish sfx failed', e) }
+
         if (!fish.scored) {
             this.score += 1
             fish.scored = true
@@ -319,6 +369,9 @@ class Play extends Phaser.Scene {
 
         const damaged = crustaceon.takeDamage(hitbox.damage || 1)
         if (damaged) {
+            try {
+                this.sound.play('hurt', { volume: 0.12 })
+            } catch (e) {}
 
             this.updateHealthDisplay()
 
@@ -480,6 +533,7 @@ class Play extends Phaser.Scene {
                         this._koiBiteZone = null
                     }
                 } catch (e) {}
+                try { this.sound.play('bite', { volume: 0.12 }) } catch (e) {}
 
                 this.time.delayedCall(180, () => {
                     if (biteConnected) {
