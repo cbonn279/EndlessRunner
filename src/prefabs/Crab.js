@@ -10,7 +10,7 @@ class Crab extends Phaser.Physics.Arcade.Sprite {
         this.body.setOffset(5, 30)
 
         this.moveSpeed = 500
-        this.jumpVelocity = -1050
+        this.jumpVelocity = -1200
         this.hurtDuration = 2000
 
         this.isInvincible = false
@@ -135,7 +135,7 @@ class CrabJumpState extends State {
             height: 160,
             offsetX: -30,
             offsetY: 30,
-            duration: 1000,
+            duration: 1200,
             follow: true,
             team: 'crustaceon'
         }) 

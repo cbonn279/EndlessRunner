@@ -4,7 +4,7 @@ class Play extends Phaser.Scene {
     }
 
     create(data) {
-        this.selectedCharacter = data.character
+        this.selectedCrustaceon = data.crustaceon || 1
 
         const createLayer = (key, speed) => {
 
@@ -35,9 +35,34 @@ class Play extends Phaser.Scene {
             child.setVisible(false)
         })
 
-        // add crab
-        this.crab = new Crab(this, 200, this.scale.height - 100, 'crab', 0)
-        this.physics.add.collider(this.crab, this.ground)
+        // background to camera
+        const baseBg = this.textures.get('B1').getSourceImage()
+        this.bgScaledHeight = baseBg.height * 4
+        this.worldTopY = this.scale.height - this.bgScaledHeight
+        this.physics.world.setBounds(0, this.worldTopY, this.scale.width, this.bgScaledHeight)
+        this.cameras.main.setBounds(0, this.worldTopY, this.scale.width, this.bgScaledHeight)
+        this.cameras.main.scrollX = 0
+        this.cameras.main.scrollY = 0
+
+
+        // spawn crustaceon
+        const groundTop = this.scale.height - 30
+        const spawnX = 200
+        const spawnY = groundTop - 80
+
+        switch (this.selectedCrustaceon) {
+            case 1:
+                this.crustaceon = new Crab(this, spawnX, spawnY, 'crab', 0)
+                break
+            case 2:
+                this.crustaceon = new Lobster(this, spawnX, spawnY, 'lobster', 0)
+                break
+            case 3:
+                this.crustaceon = new Shrimp(this, spawnX, spawnY, 'shrimp', 0)
+                break
+        }
+
+        this.physics.add.collider(this.crustaceon, this.ground)
 
         // health UI
         this.CrustaceonHealth = 3
@@ -50,11 +75,15 @@ class Play extends Phaser.Scene {
 
         for (let i = 0; i < this.CrustaceonHealth; i++) {
             const r = this.add.rectangle(startX + i * (rectW + padding), startY, rectW, rectH, 0xFF0000).setOrigin(0, 0)
+            r.setScrollFactor(0)            // keep health rect fixed on screen
             this.healthRects.push(r)
         }
 
         this.updateHealthDisplay = function () {
-            const cur = (this.crab && typeof this.crab.health === 'number') ? this.crab.health : 0
+            const cur = (this.crustaceon && typeof this.crustaceon.health === 'number')
+                ? this.crustaceon.health
+                : 0
+
             for (let i = 0; i < this.healthRects.length; i++) {
                 if (i < cur) {
                     this.healthRects[i].setFillStyle(0x00FF00)
@@ -63,8 +92,22 @@ class Play extends Phaser.Scene {
                 }
             }
         }.bind(this)
-
         this.updateHealthDisplay()
+
+        // score UI
+        this.score = 0
+        const savedHigh = localStorage.getItem('HighScore')
+        this.highScore = savedHigh ? parseInt(savedHigh) : 0
+        this.scoreText = this.add.text(this.scale.width - 20, 10, 'SCORE: 0', {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(1, 0).setScrollFactor(0)
+
+        this.updateScoreDisplay = function () {
+            this.scoreText.setText('SCORE: ' + this.score)
+        }.bind(this)
+
+        this.updateScoreDisplay()
 
         // fish features
         this.fishSpeed = [
@@ -95,9 +138,9 @@ class Play extends Phaser.Scene {
 
         // hitbox interactions
         this.hitboxGroup = this.physics.add.group()
-        this.physics.add.overlap(this.hitboxGroup, this.crab, this.damageCrustaceon, null, this)
+        this.physics.add.overlap(this.hitboxGroup, this.crustaceon, this.damageCrustaceon, null, this)
         this.physics.add.overlap(this.hitboxGroup, this.fishGroup, this.damageFish, null, this)
-        this.physics.add.overlap(this.crab, this.hitboxGroup, this.damageCrustaceon, null, this)
+        this.physics.add.overlap(this.crustaceon, this.hitboxGroup, this.damageCrustaceon, null, this)
         this.physics.add.overlap(this.fishGroup, this.hitboxGroup, this.damageFish, null, this)
 
         this.debugBoxes = false
@@ -188,9 +231,14 @@ class Play extends Phaser.Scene {
         if (fish.dying) return
 
         fish.dying = true
-        if (fish._followHitbox) {
-            fish._followHitbox.destroy()
-            fish._followHitbox = null
+        if (!fish.scored) {
+            this.score += 1
+            fish.scored = true
+            this.updateScoreDisplay()
+        }
+        if (fish.followHitbox) {
+            fish.followHitbox.destroy()
+            fish.followHitbox = null
         }
         fish.anims.play('Fdie')
 
@@ -228,8 +276,8 @@ class Play extends Phaser.Scene {
         if (nA instanceof Hitbox) hitbox = nA
         if (nB instanceof Hitbox) hitbox = nB
 
-        if (nA instanceof Crab) crustaceon = nA
-        if (nB instanceof Crab) crustaceon = nB
+        if (nA === this.crustaceon) crustaceon = nA
+        if (nB === this.crustaceon) crustaceon = nB
 
         if (!hitbox || !crustaceon) {
             return
@@ -248,15 +296,41 @@ class Play extends Phaser.Scene {
             this.updateHealthDisplay()
 
             if (crustaceon.health <= 0) {
-                this.scene.start('gameoverScene')
+                let newHigh = false
+                if (this.score > this.highScore) {
+                    this.highScore = this.score
+                    localStorage.setItem('HighScore', this.highScore)
+                    newHigh = true
+                }
+                this.scene.start('gameoverScene', {
+                    score: this.score,
+                    highScore: this.highScore,
+                    newHigh: newHigh
+                })
             }
         }
     }
 
 
     update() {
-        if(this.crab) {
-            this.crab.stateMachine.step()
+        if (this.crustaceon) {
+            this.crustaceon.stateMachine.step()
+        }
+
+        // camera follow crustaceon
+        if (this.crustaceon) {
+            const cam = this.cameras.main
+            const camH = cam.height
+            const targetY = this.crustaceon.y - camH / 2 
+
+            const camTopLimit = this.worldTopY
+            const camBottomLimit = this.worldTopY + this.bgScaledHeight - camH
+
+            const clamped = Phaser.Math.Clamp(targetY, this.worldTopY, camBottomLimit)
+
+            const lerp = 0.12
+            cam.scrollY = Phaser.Math.Interpolation.Linear([cam.scrollY, clamped], lerp)
+            cam.scrollX = 0
         }
 
         this.B1.tilePositionX += this.B1.scrollSpeed
@@ -276,8 +350,8 @@ class Play extends Phaser.Scene {
             this.debugGraphics.clear()
             this.debugGraphics.lineStyle(2, 0xff00ff, 1)
 
-            if (this.crab && this.crab.body) {
-                const b = this.crab.body
+            if (this.crustaceon && this.crustaceon.body) {
+                const b = this.crustaceon.body
                 this.debugGraphics.strokeRect(b.x, b.y, b.width, b.height)
             }
 

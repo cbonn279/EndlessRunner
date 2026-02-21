@@ -25,7 +25,7 @@ class Load extends Phaser.Scene {
 
         this.load.spritesheet('shrimp', 'ShrimpSpritesheet.png', {
             frameWidth: 66,
-            frameHeight: 44,
+            frameHeight: 54,
         })
 
         this.load.spritesheet('fish', 'FishSpritesheet.png', {
@@ -90,7 +90,7 @@ class Load extends Phaser.Scene {
         // shrimp animations
         this.anims.create({
             key: 'Swalk',
-            frameRate: 8,
+            frameRate: 10,
             repeat: -1,
             frames: this.anims.generateFrameNumbers('shrimp', { start: 0, end: 3 }),
         })

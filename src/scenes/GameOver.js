@@ -3,15 +3,35 @@ class GameOver extends Phaser.Scene {
         super("gameoverScene")
     }
 
-    create() {
+    create(data) {
         this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x000000, 0.6).setOrigin(0)
 
-        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 20, 'GAME OVER', {
+        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 60, 'GAME OVER', {
             fontSize: '48px',
             color: '#ffffff'
         }).setOrigin(0.5)
 
-        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 30, 'Press R to return to Menu', {
+        const finalScore = (data && typeof data.score === 'number') ? data.score : 0
+        const highScore = (data && typeof data.highScore === 'number') ? data.highScore : 0
+        const newHigh = data && data.newHigh
+        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 10, `SCORE: ${finalScore}`, {
+            fontSize: '32px',
+            color: '#ffffff'
+        }).setOrigin(0.5)
+        if (newHigh) {
+            this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 20,
+                `NEW HIGH SCORE: ${finalScore}`, {
+                    fontSize: '28px',
+                    color: '#ffff00'
+                }).setOrigin(0.5)
+        } else {
+            this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 20,
+                `HIGH SCORE: ${highScore}`, {
+                    fontSize: '28px',
+                    color: '#ffffff'
+                }).setOrigin(0.5)
+        }
+        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 40, 'Press R to return to Menu', {
             fontSize: '20px',
             color: '#ffffff'
         }).setOrigin(0.5)

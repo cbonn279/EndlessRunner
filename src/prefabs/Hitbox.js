@@ -36,16 +36,16 @@ class Hitbox extends Phaser.GameObjects.Zone {
 
         const dur = typeof config.duration === 'number' ? config.duration : 150
         if (dur > 0) {
-            this._timer = scene.time.delayedCall(dur, () => {
+            this.timer = scene.time.delayedCall(dur, () => {
                 this.destroy()
             })
         }
 
         if (this.follow && this.owner) {
-            if (this.owner._followHitbox && this.owner._followHitbox !== this) {
-                try { this.owner._followHitbox.destroy() } catch (e) {}
+            if (this.owner.followHitbox && this.owner.followHitbox !== this) {
+                try { this.owner.followHitbox.destroy() } catch (e) {}
             }
-            this.owner._followHitbox = this
+            this.owner.followHitbox = this
         }
 
         if (this.owner && this.owner.on) {
